@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group
+        android:id="@+id/menu_group_show_system_apps"
+        android:visible="true">
+        <item
+            android:id="@+id/menu_show_system_apps"
+            android:title="@string/show_system_apps" />
+    </group>
+
+    <group
+        android:id="@+id/menu_group_hide_system_apps"
+        android:visible="false">
+        <item
+            android:id="@+id/menu_hide_system_apps"
+            android:title="@string/hide_system_apps" />
+    </group>
+</menu>
