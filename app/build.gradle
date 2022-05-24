@@ -1,16 +1,18 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
+    id 'kotlin-kapt'
+    id 'dagger.hilt.android.plugin'
 }
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 32
     buildToolsVersion "30.0.3"
 
     defaultConfig {
         applicationId "fast.app.sharer"
-        minSdkVersion 14
-        targetSdkVersion 29
+        minSdkVersion 16
+        targetSdkVersion 32
         versionCode 1
         versionName "1.0"
         multiDexEnabled true
@@ -29,23 +31,56 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+    buildFeatures {
+        dataBinding true
+    }
 }
 
 dependencies {
-
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
+    def kotlin_version = "1.6.21"
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'androidx.core:core-ktx:1.3.2'
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation 'com.google.android.material:material:1.3.0'
 
-    // Coroutines
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.3'
+    def appcompat_version = "1.4.1"
+    implementation "androidx.appcompat:appcompat:$appcompat_version"
+
+    def metarial_version = "1.6.0"
+    implementation "com.google.android.material:material:$metarial_version"
+
+    def legancy_support_version = "1.0.0"
+    implementation "androidx.legacy:legacy-support-v4:$legancy_support_version"
+
+    // KTX
+    def core_ktx_version = "1.7.0"
+    implementation "androidx.core:core-ktx:$core_ktx_version"
+
+    def activity_ktx_version = "1.4.0"
+    implementation "androidx.activity:activity-ktx:$activity_ktx_version"
+
+    def fragment_ktx_version = "1.4.1"
+    implementation "androidx.fragment:fragment-ktx:$fragment_ktx_version"
 
     // MultiDex
     def multidex_version = "2.0.1"
     implementation "androidx.multidex:multidex:$multidex_version"
 
+    // Hilt
+    def hilt_version = "2.40"
+    implementation "com.google.dagger:hilt-android:$hilt_version"
+    kapt "com.google.dagger:hilt-compiler:$hilt_version"
+
+    // Retrofit
+    def retrofit_version = "2.9.0"
+    implementation "com.squareup.retrofit2:retrofit:$retrofit_version"
+    implementation "com.squareup.retrofit2:converter-gson:$retrofit_version"
+    implementation "com.squareup.retrofit2:adapter-rxjava2:$retrofit_version"
+
     // OkHttp
-    implementation 'com.squareup.okhttp3:okhttp:4.9.0'
+    def okhttp_interceptor_version = "4.9.0"
+    implementation "com.squareup.okhttp3:logging-interceptor:$okhttp_interceptor_version"
+
+    // Permission Check
+    def permission_check_version = "3.8"
+    implementation "com.nabinbhandari.android:permissions:$permission_check_version"
+
 }

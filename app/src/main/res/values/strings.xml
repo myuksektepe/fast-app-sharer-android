@@ -1,10 +1,18 @@
 <resources>
     <string name="app_name">Fast App Sharer</string>
-    <string name="search_apps">Search with app name...</string>
+    <string name="search_apps">Search with app name…</string>
     <string name="no_result">No Result.</string>
     <string name="share_selected_apps">Share Selected Apps</string>
     <string name="show_system_apps">Show system apps</string>
-    <string name="share_via">Share via ...</string>
+    <string name="share_via">Share via …</string>
     <string name="hide_system_apps">Hide system apps</string>
-    <string name="loading">Loading...</string>
+    <string name="list_is_empty">The app list is empty!</string>
+    <string name="loading">Loading…</string>
+    <string name="info">Info</string>
+    <string name="warning">Warning!</string>
+    <string name="try_again">Try Again</string>
+    <string name="cancel">Cancel</string>
+    <string name="go_to_settings">Go to settings</string>
+    <string name="settings">Settings</string>
+    <string name="please_approve_permission_requests">Please approve permission requests for sharing your apps.</string>
 </resources>

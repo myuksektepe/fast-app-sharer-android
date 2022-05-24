@@ -1,15 +1,18 @@
 package fast.app.sharer.util
 
+import android.Manifest
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.StrictMode
 import android.os.StrictMode.ThreadPolicy
+import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.widget.ProgressBar
@@ -17,15 +20,25 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.FileProvider
 import fast.app.sharer.R
-import fast.app.sharer.model.InstalledAppModel
-import fast.app.sharer.receiver.AppSelectorReceiver
+import fast.app.sharer.domain.model.InstalledAppModel
+import fast.app.sharer.domain.receiver.AppSelectorReceiver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.*
-import java.util.*
 import java.util.concurrent.TimeUnit
 
+
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN)
+val PERMISSIONS = arrayOf(
+    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+    Manifest.permission.READ_EXTERNAL_STORAGE,
+    Manifest.permission.BLUETOOTH,
+)
 
 class CustomComparator : Comparator<InstalledAppModel> {
     override fun compare(o1: InstalledAppModel, o2: InstalledAppModel): Int {
@@ -33,90 +46,98 @@ class CustomComparator : Comparator<InstalledAppModel> {
     }
 }
 
-open class Util {
-    companion object {
-        val TAG = "MRT"
-        val shareRequestCode = 1001
-        val appsFolder = File(Environment.getExternalStorageDirectory().toString() + File.separator + "Apps")
-    }
+object Util {
+    val shareRequestCode = 1001
+    val appsFolder = File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path}/FAS/")
 
     fun isSystemPackage(packageInfo: PackageInfo): Boolean {
-        return if (packageInfo.applicationInfo.flags and 1 == 0 && packageInfo.applicationInfo.flags and 128 == 0) false else true
+        return !(packageInfo.applicationInfo.flags and 1 == 0 && packageInfo.applicationInfo.flags and 128 == 0)
         //return packageInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0
     }
 
     fun humanReadableByteCountBin(bytes: Long) = when {
         bytes == Long.MIN_VALUE || bytes < 0 -> "N/A"
         bytes < 1024L -> "$bytes B"
-        bytes <= 0xfffccccccccccccL shr 40 -> "%.1f Kb".format(bytes.toDouble() / (0x1 shl 10))
-        bytes <= 0xfffccccccccccccL shr 30 -> "%.1f Mb".format(bytes.toDouble() / (0x1 shl 20))
-        bytes <= 0xfffccccccccccccL shr 20 -> "%.1f Gb".format(bytes.toDouble() / (0x1 shl 30))
-        bytes <= 0xfffccccccccccccL shr 10 -> "%.1f Tb".format(bytes.toDouble() / (0x1 shl 40))
+        bytes <= 0xfffccccccccccccL shr 40 -> "%.1f KB".format(bytes.toDouble() / (0x1 shl 10))
+        bytes <= 0xfffccccccccccccL shr 30 -> "%.1f MB".format(bytes.toDouble() / (0x1 shl 20))
+        bytes <= 0xfffccccccccccccL shr 20 -> "%.1f GB".format(bytes.toDouble() / (0x1 shl 30))
+        bytes <= 0xfffccccccccccccL shr 10 -> "%.1f TB".format(bytes.toDouble() / (0x1 shl 40))
         bytes <= 0xfffccccccccccccL -> "%.1f PiB".format((bytes shr 10).toDouble() / (0x1 shl 40))
         else -> "%.1f EiB".format((bytes shr 20).toDouble() / (0x1 shl 40))
     }
 
-    fun fileCloneAndRename(app: InstalledAppModel): File? {
-        val f1 = app.file
-        var f2: File? = null
-
+    fun createTempFolder() {
         try {
-            f2 = appsFolder
-            if (!f2.exists()) {
-                f2.mkdir()
-            }
-            f2 = File(f2.path + File.separator + app.name + "_" + app.versionName + ".apk")
-            f2.createNewFile()
+            if (!appsFolder.exists()) appsFolder.mkdirs()
         } catch (e: Exception) {
-            Log.e(Util.TAG, "122: ${e.message}")
+            Log.e(TAG, "createTempFolder: ${e.message}")
         }
+    }
 
+    fun moveApkFile(app: InstalledAppModel): File? {
+        createTempFolder()
         try {
-            val `in`: InputStream = FileInputStream(f1)
-            val out: OutputStream = FileOutputStream(f2)
-            val buf = ByteArray(4096)
-            var len: Int
-            while (`in`.read(buf).also { len = it } > 0) {
-                out.write(buf, 0, len)
-            }
-            `in`.close()
-            out.close()
-            Log.i(TAG, "File copied - ${f1} -> ${f2}")
+            app.file?.let {
+                val from = it
+                val to = File("${appsFolder.absolutePath}/${app.name}_v${app.versionName}.apk")
 
-            return f2
+                val `in`: InputStream = FileInputStream(from)
+                val out: OutputStream = FileOutputStream(to)
+
+                // Copy the bits from instream to outstream
+                //val buf = ByteArray(1024)
+                val buf = ByteArray(4096)
+                var len: Int
+
+                while (`in`.read(buf).also { len = it } > 0) {
+                    out.write(buf, 0, len)
+                }
+
+                `in`.close()
+                out.close()
+
+                Log.i(TAG, "From: $from")
+                Log.i(TAG, "To: $to")
+                return to
+            } ?: run {
+                Log.e(TAG, "moveApkFile -> file sourcedir is empty")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "94 : ${e.message}")
-            return null
+            Log.e(TAG, "moveApkFile: ${e.message}")
         }
+        return null
     }
 
     @RequiresApi(Build.VERSION_CODES.M)
-    fun shareApp(context: Context, app: InstalledAppModel) {
+    suspend fun Context.shareApp(app: InstalledAppModel): Flow<ResultState<Intent>> = flow {
+        val context = this@shareApp.applicationContext
+        emit(ResultState.LOADING())
         try {
-            val file: File? = fileCloneAndRename(app)
-
+            val file: File? = moveApkFile(app)
             val shareIntent = Intent()
-            shareIntent.type = "*/*"
-            shareIntent.putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(context, "fast.app.sharer.fileprovider", file!!))
-            shareIntent.action = Intent.ACTION_SEND
-
+            shareIntent.apply {
+                action = Intent.ACTION_SEND
+                type = "application/vnd.android.package-archive" //type="*/*"
+                //putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file))
+                putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(context, "fast.app.sharer.fileprovider", file!!))
+            }
             val receiver = Intent(context, AppSelectorReceiver::class.java)
             val pendingIntent = PendingIntent.getBroadcast(context, 0, receiver, PendingIntent.FLAG_UPDATE_CURRENT)
             val chooser = Intent.createChooser(shareIntent, context.getString(R.string.share_via), pendingIntent.intentSender)
-            (context as Activity).startActivityForResult(chooser, shareRequestCode)
-
+            //(context as Activity).startActivityForResult(chooser, shareRequestCode)
+            emit(ResultState.SUCCESS(chooser))
         } catch (e: Exception) {
+            emit(ResultState.FAIL(e))
             Log.e(TAG, "148: ${e.message}")
         }
-
-    }
+    }.flowOn(Dispatchers.IO)
 
     fun deleteApk(file: File) {
         if (file.exists()) {
             if (file.delete()) {
-                System.out.println("file Deleted :" + file.getPath())
+                System.out.println("file Deleted :" + file.path)
             } else {
-                System.out.println("file not Deleted :" + file.getPath())
+                System.out.println("file not Deleted :" + file.path)
             }
         }
     }
@@ -129,20 +150,20 @@ open class Util {
     fun uploadApkToYuklio(activity: Activity, app: InstalledAppModel) {
         StrictMode.setThreadPolicy(ThreadPolicy.Builder().permitAll().build())
         val MEDIA_TYPE_APK = "application/vnd.android.package-archive; charset=utf-8".toMediaType()
-        val progressBar = activity.findViewById<ProgressBar>(R.id.prgUploading)
+        val progressBar = activity.findViewById<ProgressBar>(R.id.prgLoading)
         val progressListener: CountingRequestBody.Listener = object : CountingRequestBody.Listener {
             override fun onRequestProgress(bytesRead: Long, contentLength: Long) {
                 if (bytesRead >= contentLength) {
-                    if (progressBar != null) activity.runOnUiThread(Runnable { progressBar.setVisibility(View.GONE) })
+                    if (progressBar != null) activity.runOnUiThread(Runnable { progressBar.visibility = View.GONE })
                 } else {
                     if (contentLength > 0) {
                         val progress = (bytesRead.toDouble() / contentLength * 100).toInt()
                         if (progressBar != null) activity.runOnUiThread(Runnable {
-                            progressBar.setVisibility(View.VISIBLE)
-                            progressBar.setProgress(progress)
+                            progressBar.visibility = View.VISIBLE
+                            progressBar.progress = progress
                         })
                         if (progress >= 100) {
-                            progressBar.setVisibility(View.GONE)
+                            progressBar.visibility = View.GONE
                         }
                         Log.i(TAG, "uploadProgress called: $progress")
                     }
@@ -151,7 +172,7 @@ open class Util {
         }
 
         try {
-            val file: File? = fileCloneAndRename(app)
+            val file: File? = moveApkFile(app)
 
             val client: OkHttpClient = OkHttpClient.Builder()
                 .connectTimeout(5, TimeUnit.MINUTES)
@@ -205,5 +226,12 @@ open class Util {
 
     fun hasPermissions(context: Context, vararg permissions: String): Boolean = permissions.all {
         ActivityCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    fun Activity.openAppSetting() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        val uri: Uri = Uri.fromParts("package", packageName, null)
+        intent.data = uri
+        startActivity(intent)
     }
 }
