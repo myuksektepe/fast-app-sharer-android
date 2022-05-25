@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/search"
+        android:title="@string/search"
+        android:icon="@drawable/ic_search"
+        app:showAsAction="collapseActionView|always"
+        app:actionViewClass="androidx.appcompat.widget.SearchView" />
+
     <group
         android:id="@+id/menu_group_show_system_apps"
         android:visible="true">
@@ -15,4 +24,28 @@
             android:id="@+id/menu_hide_system_apps"
             android:title="@string/hide_system_apps" />
     </group>
+    <item
+        android:id="@+id/menu_item_sort"
+        android:title="@string/sort"
+        android:icon="@drawable/ic_sort"
+        app:showAsAction="always">
+        <menu>
+            <group
+                android:id="@+id/menu_group_sort_by"
+                android:visible="true">
+                <item
+                    android:id="@+id/name_a_z"
+                    android:title="@string/name_a_z" />
+                <item
+                    android:id="@+id/name_z_a"
+                    android:title="@string/name_z_a" />
+                <item
+                    android:id="@+id/size_a_z"
+                    android:title="@string/size_a_z" />
+                <item
+                    android:id="@+id/size_z_a"
+                    android:title="@string/size_z_a" />
+            </group>
+        </menu>
+    </item>
 </menu>

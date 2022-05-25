@@ -1,12 +1,11 @@
 package fast.app.sharer.presentation.view
 
 import android.app.Activity
+import android.app.SearchManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.util.Log
 import android.view.Menu
 import android.view.MenuInflater
@@ -14,6 +13,7 @@ import android.view.MenuItem
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.widget.SearchView
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
@@ -31,6 +31,7 @@ import fast.app.sharer.util.TAG
 import fast.app.sharer.util.Util
 import fast.app.sharer.util.Util.deleteRecursive
 import fast.app.sharer.util.Util.shareApp
+import fast.app.sharer.util.ViewExtensions.hideKeyboard
 import fast.app.sharer.util.base.BaseActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -45,10 +46,12 @@ class MainActivity : BaseActivity<MainActivityViewModel, ActivityMainBinding>() 
     override val viewModel: MainActivityViewModel by viewModels()
     var appsAdapter = AppsAdapter(2)
     var menu: Menu? = null
+    lateinit var searchView: SearchView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         init()
+        handleIntent(intent)
         viewModel.fetchInstalledApps(false)
     }
 
@@ -57,7 +60,7 @@ class MainActivity : BaseActivity<MainActivityViewModel, ActivityMainBinding>() 
         //if (!checkPermissions()) requestPermissons()
 
         // Search
-        binding.edtSearch.addTextChangedListener(object : TextWatcher {
+        /*        binding.edtSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
             }
 
@@ -79,6 +82,7 @@ class MainActivity : BaseActivity<MainActivityViewModel, ActivityMainBinding>() 
 
             override fun afterTextChanged(s: Editable?) {}
         })
+         */
     }
 
     private fun setRecyclerView(appList: MutableList<InstalledAppModel>) {
@@ -131,8 +135,8 @@ class MainActivity : BaseActivity<MainActivityViewModel, ActivityMainBinding>() 
             menu!!.setGroupVisible(R.id.menu_group_show_system_apps, true)
         }
         viewModel.fetchInstalledApps(boolean)
-        binding.edtSearch.setText("")
-        binding.edtSearch.clearFocus()
+        //binding.edtSearch.setText("")
+        //binding.edtSearch.clearFocus()
     }
 
     private fun checkPermissions2(): Boolean {
@@ -198,10 +202,43 @@ class MainActivity : BaseActivity<MainActivityViewModel, ActivityMainBinding>() 
         this.menu = menu
         val menuInflater: MenuInflater = getMenuInflater()
         menuInflater.inflate(R.menu.main_menu, menu)
+
+        val searchManager = getSystemService(Context.SEARCH_SERVICE) as SearchManager
+        searchView = (menu.findItem(R.id.search).actionView as SearchView)
+        searchView.apply {
+            setSearchableInfo(searchManager.getSearchableInfo(componentName))
+            setIconifiedByDefault(false)
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(query: String?): Boolean {
+                    searchView.clearFocus()
+                    hideKeyboard()
+                    return true
+                }
+
+                override fun onQueryTextChange(newText: String?): Boolean {
+                    appsAdapter.filter.filter(newText.toString())
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        delay(300)
+                        if (appsAdapter.filteredList.size == 0) {
+                            binding.rcyAppList.visibility = View.GONE
+                            binding.rltNoResult.visibility = View.VISIBLE
+                        } else {
+                            binding.rcyAppList.visibility = View.VISIBLE
+                            binding.rltNoResult.visibility = View.GONE
+                        }
+                    }
+                    return true
+                }
+            })
+        }
+
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        searchView.clearFocus()
+        hideKeyboard()
+
         when (item.itemId) {
             R.id.menu_show_system_apps -> {
                 toogleSystemApps(true)
@@ -213,9 +250,21 @@ class MainActivity : BaseActivity<MainActivityViewModel, ActivityMainBinding>() 
         return true
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent) {
+        if (Intent.ACTION_SEARCH == intent.action) {
+            val query = intent.getStringExtra(SearchManager.QUERY)
+            Log.i(TAG, "query: $query")
+        }
+    }
+
     override fun onResume() {
         super.onResume()
-        binding.edtSearch.clearFocus()
+        //binding.edtSearch.clearFocus()
     }
 
     override fun onDestroy() {

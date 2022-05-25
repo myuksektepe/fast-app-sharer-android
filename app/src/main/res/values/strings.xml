@@ -15,4 +15,10 @@
     <string name="go_to_settings">Go to settings</string>
     <string name="settings">Settings</string>
     <string name="please_approve_permission_requests">Please approve permission requests for sharing your apps.</string>
+    <string name="sort">Sort</string>
+    <string name="name_a_z">Name: A -> Z</string>
+    <string name="name_z_a">Name: Z -> A</string>
+    <string name="size_a_z">Size: A -> Z</string>
+    <string name="size_z_a">Size: Z -> A</string>
+    <string name="search">Search</string>
 </resources>
